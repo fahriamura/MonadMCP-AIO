@@ -15,9 +15,9 @@ const __dirname = (() => {
   // Fix Windows paths
   return path.dirname(os.platform() === "win32" ? pathname.replace(/^\/(\w:)/, "$1") : pathname);
 })();
-// Debug: Output the current directory and scripts folder
-console.log(chalk.green("Current Directory:", __dirname));
-console.log(chalk.green("Scripts Folder:", path.join(__dirname, 'scripts')));
+// Nonaktifkan output debugging yang mengganggu MCP
+// console.log(chalk.green("Current Directory:", __dirname));
+// console.log(chalk.green("Scripts Folder:", path.join(__dirname, 'scripts')));
 
 const BORDER_WIDTH = 80;
 
@@ -49,7 +49,8 @@ function getAvailableScripts() {
     { name: "2. Uniswap Swap", value: "uniswap" },
     { name: "3. Deploy Contract", value: "deploy" },
     { name: "4. Send Random TX or File (address.txt)", value: "sendtx" },
-    { name: "5. Exit", value: "exit" }
+    { name: "5. View My Addresses", value: "viewaddress" },
+    { name: "6. Exit", value: "exit" }
   ];
 }
 
@@ -57,7 +58,6 @@ function getAvailableScripts() {
 function getQuote() {
   console.log(chalk.gray("💬 Quote: 'Your only limit is your mind.'")); // Bisa ganti ke quotes API
 }
-// Log the contents of the 'scripts' directory
 // Log the contents of the 'scripts' directory
 function logScriptsDirectory() {
   // For Windows, we need to fix the URL pathname format
@@ -69,6 +69,8 @@ function logScriptsDirectory() {
   }
   
   const scriptsDir = path.join(currentDir, 'scripts');
+  // Nonaktifkan output untuk MCP
+  /*
   console.log(chalk.green(`Checking scripts directory: ${scriptsDir}`));
   
   if (fs.existsSync(scriptsDir)) {
@@ -85,14 +87,13 @@ function logScriptsDirectory() {
       console.log(chalk.gray(`- ${file}`));
     });
   }
+  */
+  return scriptsDir;
 }
 
-// Call this function to log the contents of the 'scripts' directory
-logScriptsDirectory();
-
-// Call this function to log the contents of the 'scripts' directory
-logScriptsDirectory();
-
+// Nonaktifkan logging saat start up untuk MCP
+// logScriptsDirectory();
+// logScriptsDirectory();
 
 async function runScript(moduleName) {
   // Fix directory path handling for Windows
@@ -106,22 +107,25 @@ async function runScript(moduleName) {
   const scriptsDir = path.join(currentDir, 'scripts');
   const modulePath = path.join(scriptsDir, `${moduleName}.js`);
   
-  console.log(chalk.yellow("Module Path:", modulePath));
+  // Gunakan silent mode untuk MCP
+  // console.log(chalk.yellow("Module Path:", modulePath));
 
   try {
     if (fs.existsSync(modulePath)) {
       const scriptModule = await import(`file://${modulePath}`);
       if (typeof scriptModule.run === "function") {
-        await scriptModule.run();
+        return await scriptModule.run();
       } else {
-        console.log(chalk.red("No 'run' function exported in script."));
+        // console.log(chalk.red("No 'run' function exported in script."));
+        throw new Error("No 'run' function exported in script.");
       }
     } else {
-      console.log(chalk.red(`Script not found: ${moduleName}.js`));
+      // console.log(chalk.red(`Script not found: ${moduleName}.js`));
       throw new Error(`Script not found: ${moduleName}`);
     }
   } catch (err) {
-    console.error(chalk.red("Error loading the script:", err.message));
+    // console.error(chalk.red("Error loading the script:", err.message));
+    throw err;
   }
 }
 
@@ -172,6 +176,16 @@ server.tool(
   }
 );
 
+server.tool(
+  'run-viewaddress',
+  'View your wallet addresses',
+  {},
+  async () => {
+    await runScript('viewaddress');
+    return { content: [{ type: 'text', text: 'Address viewing completed.' }] };
+  }
+);
+
 // Enhanced tool to handle flexible swap commands
 server.tool(
   'swap-mon',
@@ -184,7 +198,8 @@ server.tool(
     const patterns = [
       /swap (\d+(?:\.\d+)?) MON to (0x[a-fA-F0-9]{40})/i,
       /convert (\d+(?:\.\d+)?) MON to (0x[a-fA-F0-9]{40})/i,
-      /exchange (\d+(?:\.\d+)?) MON for (0x[a-fA-F0-9]{40})/i
+      /exchange (\d+(?:\.\d+)?) MON for (0x[a-fA-F0-9]{40})/i,
+      /tukar (\d+(?:\.\d+)?) MON ke (0x[a-fA-F0-9]{40})/i
     ];
 
     for (const pattern of patterns) {
@@ -193,8 +208,19 @@ server.tool(
         const amount = parseFloat(match[1]);
         const contractAddress = match[2];
         console.log(`Executing swap: ${amount} MON to ${contractAddress}`);
-        await swapRun(contractAddress, amount);
-        return { content: [{ type: 'text', text: `Swap executed: ${amount} MON to ${contractAddress}` }] };
+        
+        // Import and run uniswap.js
+        try {
+          const uniswapModule = await import(`file://${path.join(__dirname, 'scripts', 'uniswap.js')}`);
+          if (typeof uniswapModule.run === "function") {
+            await uniswapModule.run(contractAddress, amount);
+            return { content: [{ type: 'text', text: `Swap executed: ${amount} MON to ${contractAddress}` }] };
+          } else {
+            throw new Error("Uniswap script doesn't have a run function");
+          }
+        } catch (error) {
+          return { content: [{ type: 'text', text: `Error executing swap: ${error.message}` }] };
+        }
       }
     }
     throw new Error('Could not understand the command. Please specify the amount and contract address.');
@@ -205,10 +231,13 @@ server.tool(
 async function startServer() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
+  console.log("MCP Server started successfully");
 }
 
 startServer().catch(console.error);
 
+// Nonaktifkan UI interaktif saat digunakan sebagai MCP server
+/*
 async function main() {
   clearConsole();
   printBanner();
@@ -255,4 +284,5 @@ async function main() {
   }
 }
 
-main();
+// main();
+*/

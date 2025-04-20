@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "Monad-MCP": {
+      "command": "node",
+      "args": ["main.js"],
+      "env": {
+        "RPC_URL": "https://testnet-rpc.monad.xyz"
+      }
+    }
+  }
+} 
