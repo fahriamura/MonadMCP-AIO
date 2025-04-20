@@ -1,0 +1,26 @@
+{
+  "name": "monadmcp-aio",
+  "version": "1.0.0",
+  "description": "Monad MCP AIO",
+  "main": "main.js",
+  "type": "module",
+  "scripts": {
+    "start": "node main.js"
+  },
+  "dependencies": {
+    "chalk": "^5.0.0",
+    "inquirer": "^8.2.4",
+    "solc": "^0.8.29",
+    "undici": "^7.5.0",
+    "zod": "^3.24.2",
+    "@modelcontextprotocol/sdk": "^1.7.0"
+  },
+  "devDependencies": {
+    "child_process": "^1.0.2",
+    "fs": "^0.0.1-security",
+    "os": "^0.1.1",
+    "path": "^0.12.7"
+  },
+  "author": "Amura Maulidi Fachry",
+  "license": "ISC"
+}
