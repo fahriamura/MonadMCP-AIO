@@ -295,6 +295,8 @@ server.tool(
     command: z.string().describe('Natural language command to swap MON')
   },
   async ({ command }) => {
+    // Definisikan pathModule di awal fungsi
+    const pathModule = path;
     // Simple regex patterns to match different command variations
     const patterns = [
       /swap (\d+(?:\.\d+)?) MON to (0x[a-fA-F0-9]{40})/i,
@@ -310,15 +312,87 @@ server.tool(
         const contractAddress = match[2];
         console.log(`Executing swap: ${amount} MON to ${contractAddress}`);
         
-        // Import and run uniswap.js
         try {
-          const uniswapModule = await import(`file://${path.join(__dirname, 'scripts', 'uniswap.js')}`);
-          if (typeof uniswapModule.run === "function") {
-            await uniswapModule.run(contractAddress, amount);
-            return { content: [{ type: 'text', text: `Swap executed: ${amount} MON to ${contractAddress}` }] };
-          } else {
-            throw new Error("Uniswap script doesn't have a run function");
+          // Implementasi mandiri untuk swap MON dengan ethers.js
+          const { ethers } = await import('ethers');
+          const fs = await import('fs');
+          
+          // Baca private key
+          const pvkeyPath = pathModule.join(__dirname, 'pvkey.txt');
+          if (!fs.existsSync(pvkeyPath)) {
+            return { content: [{ type: 'text', text: 'Private key file tidak ditemukan! Pastikan file pvkey.txt tersedia.' }] };
           }
+          
+          const data = fs.readFileSync(pvkeyPath, 'utf-8').split('\n');
+          const keys = data.map(k => k.trim()).filter(k => k.length === 64 || k.length === 66);
+          
+          if (!keys.length) {
+            return { content: [{ type: 'text', text: 'Tidak ditemukan private key yang valid dalam file.' }] };
+          }
+          
+          // Constants dari uniswap.js
+          const RPC_URL = "https://testnet-rpc.monad.xyz";
+          const EXPLORER_URL = "https://testnet.monadexplorer.com/tx/";
+          const ROUTER_ADDRESS = "0xCa810D095e90Daae6e867c19DF6D9A8C56db2c89";
+          const WETH = "0x760AfE86e5de5fa0Ee542fc7B7B713e1c5425701";
+          
+          // Router ABI
+          const ROUTER_ABI = [
+            "function swapExactETHForTokens(uint amountOutMin, address[] calldata path, address to, uint deadline) external payable returns (uint[] memory)"
+          ];
+          
+          // Buat provider
+          const provider = new ethers.JsonRpcProvider(RPC_URL, {
+            name: "Monad Testnet",
+            chainId: 10143
+          });
+          
+          // Gunakan private key pertama
+          const privateKey = keys[0].startsWith('0x') ? keys[0] : `0x${keys[0]}`;
+          const wallet = new ethers.Wallet(privateKey, provider);
+          
+          // Buat instance router
+          const router = new ethers.Contract(ROUTER_ADDRESS, ROUTER_ABI, wallet);
+          const tokenPath = [WETH, contractAddress];
+          const deadline = Math.floor(Date.now() / 1000) + 600;
+          
+          // Parse amount
+          const ethAmount = ethers.parseEther(amount.toString());
+          
+          console.log(`Swapping ${ethers.formatEther(ethAmount)} ETH for tokens...`);
+          
+          // Lakukan swap
+          const tx = await router.swapExactETHForTokens(
+            0, tokenPath, wallet.address, deadline,
+            { value: ethAmount, gasLimit: 300000 }
+          );
+          
+          const txHash = tx.hash;
+          const explorerUrl = EXPLORER_URL + txHash;
+          
+          console.log(`\nSWAP TRANSACTION SENT!`);
+          console.log(`TX HASH: ${txHash}`);
+          console.log(`TX EXPLORER: ${explorerUrl}`);
+          
+          // Tunggu konfirmasi
+          console.log("Waiting for transaction confirmation...");
+          const receipt = await tx.wait();
+          
+          let status = "failed";
+          if (receipt.status === 1) {
+            status = "successful";
+            console.log("Swap successful!");
+          } else {
+            console.log("Swap failed at confirmation");
+          }
+          
+          return { 
+            content: [{ 
+              type: 'text', 
+              text: `Swap executed: ${amount} MON to ${contractAddress}\n\nTransaction Hash: ${txHash}\nExplorer Link: ${explorerUrl}\nStatus: ${status}`
+            }] 
+          };
+          
         } catch (error) {
           return { content: [{ type: 'text', text: `Error executing swap: ${error.message}` }] };
         }
@@ -337,7 +411,8 @@ server.tool(
   },
   async ({ tokenAddress }) => {
     try {
-      const analyzerModule = await import(`file://${path.join(__dirname, 'scripts', 'tokenAnalyzer.js')}`);
+      const pathModule = path;
+      const analyzerModule = await import(`file://${pathModule.join(__dirname, 'scripts', 'tokenAnalyzer.js')}`);
       if (typeof analyzerModule.run === "function") {
         const report = await analyzerModule.run(tokenAddress);
         
@@ -412,7 +487,8 @@ server.tool(
   },
   async ({ address }) => {
     try {
-      const analyzerModule = await import(`file://${path.join(__dirname, 'scripts', 'addressAnalyzer.js')}`);
+      const pathModule = path;
+      const analyzerModule = await import(`file://${pathModule.join(__dirname, 'scripts', 'addressAnalyzer.js')}`);
       if (typeof analyzerModule.run === "function") {
         const report = await analyzerModule.run(address);
         
@@ -512,7 +588,8 @@ server.tool(
   },
   async ({ screenName }) => {
     try {
-      const twitterModule = await import(`file://${path.join(__dirname, 'scripts', 'twitterChecker.js')}`);
+      const pathModule = path;
+      const twitterModule = await import(`file://${pathModule.join(__dirname, 'scripts', 'twitterChecker.js')}`);
       if (typeof twitterModule.run === "function") {
         const result = await twitterModule.run(screenName);
         
