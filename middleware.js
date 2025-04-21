@@ -89,13 +89,43 @@ app.post('/command', async (req, res) => {
 // Function untuk menginterpretasi dan menjalankan perintah
 async function interpretAndExecuteCommand(command) {
   // Mendukung lebih banyak pola perintah
-  const patterns = [
+  const swapPatterns = [
     /swap (\d+(?:\.\d+)?) MON to (0x[a-fA-F0-9]{40})/i,
     /tukar (\d+(?:\.\d+)?) MON ke (0x[a-fA-F0-9]{40})/i,
     /kirim (\d+(?:\.\d+)?) MON ke (0x[a-fA-F0-9]{40})/i
   ];
   
-  for (const pattern of patterns) {
+  // Token analysis patterns
+  const analysisPatterns = [
+    /analyze token (?:at |address |contract |)(0x[a-fA-F0-9]{40})/i,
+    /analisis token (?:di |alamat |kontrak |)(0x[a-fA-F0-9]{40})/i,
+    /check token (?:at |address |contract |)(0x[a-fA-F0-9]{40})/i,
+    /cek token (?:di |alamat |kontrak |)(0x[a-fA-F0-9]{40})/i,
+    /periksa token (?:di |alamat |kontrak |)(0x[a-fA-F0-9]{40})/i
+  ];
+  
+  // Wallet analysis patterns
+  const walletAnalysisPatterns = [
+    /analyze (?:address|wallet|account) (?:at |address |)(0x[a-fA-F0-9]{40})/i,
+    /analisis (?:alamat|dompet) (?:di |alamat |)(0x[a-fA-F0-9]{40})/i,
+    /check (?:address|wallet) (?:at |address |)(0x[a-fA-F0-9]{40})/i,
+    /cek (?:alamat|dompet) (?:di |alamat |)(0x[a-fA-F0-9]{40})/i,
+    /lihat (?:alamat|dompet|akun) (?:di |alamat |)(0x[a-fA-F0-9]{40})/i,
+    /info (?:alamat|dompet|akun) (?:di |alamat |)(0x[a-fA-F0-9]{40})/i
+  ];
+  
+  // Twitter username check patterns
+  const twitterCheckPatterns = [
+    /check (?:twitter|twitter username|twitter history) (?:for |of |)@?([A-Za-z0-9_]{1,15})/i,
+    /cek (?:twitter|username twitter|riwayat twitter) (?:untuk |dari |)@?([A-Za-z0-9_]{1,15})/i,
+    /analyze (?:twitter|twitter username) (?:for |of |)@?([A-Za-z0-9_]{1,15})/i,
+    /analisis (?:twitter|username twitter) (?:untuk |dari |)@?([A-Za-z0-9_]{1,15})/i,
+    /lihat (?:riwayat|history) twitter (?:untuk |dari |)@?([A-Za-z0-9_]{1,15})/i,
+    /show (?:twitter|username) (?:history|changes) (?:for |of |)@?([A-Za-z0-9_]{1,15})/i
+  ];
+  
+  // Check for swap commands first
+  for (const pattern of swapPatterns) {
     const match = command.match(pattern);
     if (match) {
       const amount = parseFloat(match[1]);
@@ -107,6 +137,57 @@ async function interpretAndExecuteCommand(command) {
       return { message: `Swap executed: ${amount} MON to ${contractAddress}` };
     }
   }
+  
+  // Then check for token analysis commands
+  for (const pattern of analysisPatterns) {
+    const match = command.match(pattern);
+    if (match) {
+      const tokenAddress = match[1];
+      
+      console.log(`Analyzing token at: ${tokenAddress}`);
+      
+      // Di sini nantinya akan memanggil tool MCP server untuk analisis token
+      return { 
+        message: `Token analysis started for ${tokenAddress}. Please wait while we process the results.`,
+        action: 'analyze-token',
+        tokenAddress 
+      };
+    }
+  }
+  
+  // Then check for wallet analysis commands
+  for (const pattern of walletAnalysisPatterns) {
+    const match = command.match(pattern);
+    if (match) {
+      const walletAddress = match[1];
+      
+      console.log(`Analyzing wallet address: ${walletAddress}`);
+      
+      // Di sini nantinya akan memanggil tool MCP server untuk analisis alamat wallet
+      return { 
+        message: `Wallet analysis started for ${walletAddress}. Please wait while we process the results.`,
+        action: 'analyze-address',
+        address: walletAddress 
+      };
+    }
+  }
+  
+  // Check for Twitter username check commands
+  for (const pattern of twitterCheckPatterns) {
+    const match = command.match(pattern);
+    if (match) {
+      const twitterUsername = match[1];
+      
+      console.log(`Checking Twitter history for username: ${twitterUsername}`);
+      
+      // Return action to be handled by MCP server
+      return { 
+        message: `Twitter username history check started for @${twitterUsername}. Please wait...`,
+        action: 'check-twitter',
+        screenName: twitterUsername
+      };
+    }
+  }
 
   throw new Error('Command not recognized');
 }
@@ -116,4 +197,5 @@ app.listen(4000, () => {
   console.log('Middleware server running on port 4000');
   console.log('Ask endpoint: POST to http://localhost:4000/ask with {"prompt": "your question"}');
   console.log('Command endpoint: POST to http://localhost:4000/command with {"command": "swap 2 MON to 0x..."}');
+  console.log('Token Analysis: Try commands like "analyze token 0x1234..." or "check token 0x1234..."');
 });

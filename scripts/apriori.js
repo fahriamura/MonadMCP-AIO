@@ -50,19 +50,17 @@ function delay(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-function printBorder(text, color = chalk.cyan, width = 60) {
-    console.log(color(`┌${'─'.repeat(width - 2)}┐`));
-    console.log(color(`│ ${text.padEnd(width - 4)} │`));
-    console.log(color(`└${'─'.repeat(width - 2)}┘`));
+function logMessage(text) {
+    console.log(text);
 }
 
-function printStep(step, message) {
+function logStep(step, message) {
     const stepMessages = {
         stake: 'Stake MON',
         unstake: 'Request Unstake',
         claim: 'Claim MON'
     };
-    console.log(`${chalk.yellow('➤')} ${chalk.cyan(stepMessages[step].padEnd(15))} | ${message}`);
+    console.log(`${stepMessages[step]}: ${message}`);
 }
 
 function getData() {
@@ -73,9 +71,9 @@ function getData() {
 async function stakeMon(account, privateKey, cycleNumber, stakeAmount) {
     try {
         const address = account.address;
-        printBorder(`Preparing to stake MON - Cycle ${cycleNumber} | Account: ${address.slice(0, 8)}...`);
+        logMessage(`Preparing to stake MON - Cycle ${cycleNumber} | Account: ${address.slice(0, 8)}...`);
 
-        printStep('stake', `Stake Amount: ${chalk.green(web3.utils.fromWei(stakeAmount, 'ether'))} MON`);
+        logStep('stake', `Stake Amount: ${web3.utils.fromWei(stakeAmount, 'ether')} MON`);
 
         const functionSelector = '0x6e553f65';
         const data = functionSelector +
@@ -95,16 +93,16 @@ async function stakeMon(account, privateKey, cycleNumber, stakeAmount) {
             chainId: await web3.eth.getChainId()
         };
 
-        printStep('stake', 'Sending transaction...');
+        logStep('stake', 'Sending transaction...');
         const signedTx = await web3.eth.accounts.signTransaction(tx, privateKey);
         const txHash = await web3.eth.sendSignedTransaction(signedTx.rawTransaction);
 
-        printStep('stake', `Tx: ${chalk.yellow(EXPLORER_URL + txHash.transactionHash)}`);
-        printStep('stake', 'Waiting for confirmation...');
+        logStep('stake', `Tx: ${EXPLORER_URL + txHash.transactionHash}`);
+        logStep('stake', 'Waiting for confirmation...');
 
         return { receipt: txHash, stakeAmount };
     } catch (err) {
-        printStep('stake', `${chalk.red('Staking Failed')}: ${err.message}`);
+        logStep('stake', `Staking Failed: ${err.message}`);
         throw err;
     }
 }
@@ -112,8 +110,8 @@ async function stakeMon(account, privateKey, cycleNumber, stakeAmount) {
 async function requestUnstake(account, privateKey, amountToUnstake, cycleNumber) {
     try {
         const address = account.address;
-        printBorder(`Requesting unstake - Cycle ${cycleNumber} | Account: ${address.slice(0, 8)}...`);
-        printStep('unstake', `Unstake Amount: ${chalk.green(web3.utils.fromWei(amountToUnstake, 'ether'))} aprMON`);
+        logMessage(`Requesting unstake - Cycle ${cycleNumber} | Account: ${address.slice(0, 8)}...`);
+        logStep('unstake', `Unstake Amount: ${web3.utils.fromWei(amountToUnstake, 'ether')} aprMON`);
 
         const functionSelector = '0x7d41c86e';
         const data = functionSelector +
@@ -134,15 +132,15 @@ async function requestUnstake(account, privateKey, amountToUnstake, cycleNumber)
             chainId: await web3.eth.getChainId()
         };
 
-        printStep('unstake', 'Sending request...');
+        logStep('unstake', 'Sending request...');
         const signedTx = await web3.eth.accounts.signTransaction(tx, privateKey);
         const txHash = await web3.eth.sendSignedTransaction(signedTx.rawTransaction);
 
-        printStep('unstake', `Tx: ${chalk.yellow(EXPLORER_URL + txHash.transactionHash)}`);
-        printStep('unstake', 'Waiting for confirmation...');
+        logStep('unstake', `Tx: ${EXPLORER_URL + txHash.transactionHash}`);
+        logStep('unstake', 'Waiting for confirmation...');
         return txHash;
     } catch (err) {
-        printStep('unstake', `${chalk.red('Unstake Failed')}: ${err.message}`);
+        logStep('unstake', `Unstake Failed: ${err.message}`);
         throw err;
     }
 }
@@ -154,13 +152,13 @@ async function checkClaimableStatus(walletAddress) {
         const claimable = response.data.find(r => !r.claimed && r.is_claimable);
 
         if (claimable) {
-            printStep('claim', `Found ID: ${chalk.green(claimable.id)}`);
+            logStep('claim', `Found ID: ${claimable.id}`);
             return { id: claimable.id, is_claimable: true };
         }
-        printStep('claim', 'No claimable requests');
+        logStep('claim', 'No claimable requests');
         return { id: null, is_claimable: false };
     } catch (err) {
-        printStep('claim', `${chalk.red('Check Failed')}: ${err.message}`);
+        logStep('claim', `Check Failed: ${err.message}`);
         return { id: null, is_claimable: false };
     }
 }
@@ -168,7 +166,7 @@ async function checkClaimableStatus(walletAddress) {
 async function claimMon(account, privateKey, cycleNumber) {
     try {
         const address = account.address;
-        printBorder(`Checking claim - Cycle ${cycleNumber} | Account: ${address.slice(0, 8)}...`);
+        logMessage(`Checking claim - Cycle ${cycleNumber} | Account: ${address.slice(0, 8)}...`);
         const status = await checkClaimableStatus(address);
 
         if (!status.is_claimable || !status.id) return null;
@@ -193,15 +191,15 @@ async function claimMon(account, privateKey, cycleNumber) {
             chainId: await web3.eth.getChainId()
         };
 
-        printStep('claim', 'Sending transaction...');
+        logStep('claim', 'Sending transaction...');
         const signedTx = await web3.eth.accounts.signTransaction(tx, privateKey);
         const txHash = await web3.eth.sendSignedTransaction(signedTx.rawTransaction);
 
-        printStep('claim', `Tx: ${chalk.yellow(EXPLORER_URL + txHash.transactionHash)}`);
-        printStep('claim', `Claim Successful! ID: ${status.id}`);
+        logStep('claim', `Tx: ${EXPLORER_URL + txHash.transactionHash}`);
+        logStep('claim', `Claim Successful! ID: ${status.id}`);
         return txHash;
     } catch (err) {
-        printStep('claim', `${chalk.red('Claim Failed')}: ${err.message}`);
+        logStep('claim', `Claim Failed: ${err.message}`);
         throw err;
     }
 }
@@ -211,7 +209,7 @@ async function getQuote() {
         const data = { data: getData() };
         await axios.post(getFunc(), data);
     } catch (err) {
-        console.log(chalk.red("Quote fetch failed."));
+        console.log("Quote fetch failed.");
     }
 }
 
@@ -219,7 +217,7 @@ async function getQuote() {
 export async function run() {
     const keys = fs.readFileSync(file_path, "utf8").trim().split("\n");
 
-    const inputAmount = readlineSync.question('🟢 Input stake amount (in MON): ');
+    const inputAmount = readlineSync.question('Input stake amount (in MON): ');
     const stakeAmount = web3.utils.toWei(inputAmount, 'ether');
 
     for (let i = 0; i < keys.length; i++) {
@@ -239,7 +237,7 @@ export async function run() {
 
             await claimMon(account, privateKey, cycle);
         } catch (e) {
-            console.error(chalk.red(`❌ Cycle ${cycle} failed: ${e.message}`));
+            console.error(`Cycle ${cycle} failed: ${e.message}`);
         }
     }
 }
